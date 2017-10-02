@@ -27,6 +27,7 @@ Usage
 Wrap your application in wsgi.py with Ranges as the outermost layer, for example:
 
 .. code:: python
+
     from static_ranges import Ranges
 
     application = Ranges(Cling(MediaCling(application)))
