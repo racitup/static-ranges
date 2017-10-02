@@ -164,7 +164,7 @@ class Ranges(object):
         def dummy_file_wrapper(file_like, block_size):
             priv.file_like, priv.block_size = file_like, block_size
             priv.file_size = os.fstat(file_like.fileno()).st_size
-            priv.ranges = priv.valid_ranges(priv.request_ranges, priv.file_size)
+            priv.ranges = self.valid_ranges(priv.request_ranges, priv.file_size)
 
         def response_idle_cb(instat, inheaders, exc_info=None):
             inheaders.append( (self.header_accept_ranges, 'bytes') )
