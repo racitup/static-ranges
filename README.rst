@@ -21,6 +21,15 @@ an app up and running on Heroku for testing with all static and media files serv
 It also only supports single ranges (or overlapping ranges that condense to a single range) but that
 probably covers 99.9% of usage.
 
+Install
+-------
+
+It is available from pypi like so:
+
+.. code:: shell
+
+    $ pip install static-ranges
+
 Usage
 -----
 
