@@ -15,10 +15,10 @@ Safari requires byte-range support when requesting HTML5 videos.
 Status and caveats
 ------------------
 
-I really wouldn't use this for production and hasn't been well-tested. It has been developed as a quick way to get
-an app up and running on Heroku for testing with all static and media files served from the same place.
+static-ranges has been developed as a quick way to get an app up and running on Heroku for testing with
+all static and media files served from the same place. Probably not production ready.
 
-It also only supports single ranges (or overlapping ranges that condense to a single range) but that
+static-ranges only supports single ranges (or overlapping ranges that condense to a single range) but that
 probably covers 99.9% of usage.
 
 Install

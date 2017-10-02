@@ -23,7 +23,7 @@ setup(
     author_email="rich@racitup.com",
     name="static-ranges",
     packages=find_packages(exclude=['docs']),
-    version='0.1.0',
+    version='0.2.0',
     description="WSGI middleware for handling HTTP byte-ranges",
     long_description=README,
     url='https://github.com/racitup/static-ranges',

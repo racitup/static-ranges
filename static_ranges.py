@@ -35,7 +35,7 @@ import os
 
 
 class RangeFileWrapper(object):
-    """Creates new file_wrapper iterable objects for thread-safeness?"""
+    """Creates new file_wrapper iterable objects"""
 
     def __init__(self, file_like, block_size, ranges):
         self.file_like, self.block_size, self.ranges = file_like, block_size, ranges
@@ -43,9 +43,12 @@ class RangeFileWrapper(object):
             self.close = self.file_like.close
 
     def __iter__(self):
+        if self.file_like.closed:
+            self.file_like = open(self.file_like.name)
         return self.singlerange_file_wrapper(self.file_like, self.block_size, self.ranges)
 
-    def singlerange_file_wrapper(self, file_like, block_size, ranges):
+    @staticmethod
+    def singlerange_file_wrapper(file_like, block_size, ranges):
         rng = ranges[0]
         file_like.seek(rng[0])
         size = rng[1] - rng[0] + 1
@@ -64,9 +67,6 @@ class Ranges(object):
     Content-Type: multipart/byteranges; boundary=... is not supported.
     If multiple ranges condense down to a single range, that range will be sent.
     """
-    file_size = None
-    start_response_args = ()
-    ranges = request_ranges = []
     header_range = 'HTTP_RANGE'
     header_accept_ranges = 'Accept-Ranges'
     header_content_range = 'Content-Range'
@@ -147,30 +147,24 @@ class Ranges(object):
         ranges = cls.convert_ranges(ranges, length)
         return cls.condense_ranges(ranges)
 
-    def clear(self):
-        del self.file_like
-        del self.file_size
-        del self.ranges
-
     def __call__(self, environ, start_response):
 
-        str_buf = ""
         def write_str(instr):
             """String buffer for old-style apps"""
-            str_buf += instr
+            priv.str_buf += instr
 
         def print_start_response(*args):
             print("Resp: {}, {}, {}".format(*args))
             return start_response(*args)
 
         def response_range_cb(instat, inheaders, exc_info=None):
-            self.start_response_args = (instat, inheaders, exc_info)
+            priv.start_response_args = (instat, inheaders, exc_info)
             return write_str
 
         def dummy_file_wrapper(file_like, block_size):
-            self.file_like, self.block_size = file_like, block_size
-            self.file_size = os.fstat(file_like.fileno()).st_size
-            self.ranges = self.valid_ranges(self.request_ranges, self.file_size)
+            priv.file_like, priv.block_size = file_like, block_size
+            priv.file_size = os.fstat(file_like.fileno()).st_size
+            priv.ranges = priv.valid_ranges(priv.request_ranges, priv.file_size)
 
         def response_idle_cb(instat, inheaders, exc_info=None):
             inheaders.append( (self.header_accept_ranges, 'bytes') )
@@ -181,8 +175,13 @@ class Ranges(object):
             return start_response(instat, inheaders, exc_info)
 
         if self.enabled:
-            self.request_ranges = self.parse_byteranges(environ)
-            if not self.request_ranges:
+            # private thread-safe variable container
+            priv = lambda: None
+
+            priv.str_buf = ""
+            priv.request_ranges = self.parse_byteranges(environ)
+
+            if not priv.request_ranges:
                 return self.application(environ, response_idle_cb)
 
             # replace the file_wrapper so we can get the file-like object & size for static files
@@ -192,29 +191,27 @@ class Ranges(object):
 
             body = self.application(newenv, response_range_cb)
 
-            if str_buf or self.file_size is None:
+            if priv.str_buf or not hasattr(priv, 'file_size'):
                 # we won't execute the range if old-style string output or not a static file
-                write_out = response_idle_cb(*self.start_response_args)
-                if str_buf:
-                    write_out(str_buf)
+                write_out = response_idle_cb(*priv.start_response_args)
+                if priv.str_buf:
+                    write_out(priv.str_buf)
                 return body
-            elif len(self.ranges) == 1:
-                rng = self.ranges[0]
+            elif len(priv.ranges) == 1:
+                rng = priv.ranges[0]
                 extra_headers = [
-                    (self.header_content_range,  'bytes {}-{}/{}'.format(*rng, self.file_size)),
+                    (self.header_content_range,  'bytes {}-{}/{}'.format(*rng, priv.file_size)),
                     (self.header_content_length, '{}'.format(rng[1] - rng[0] + 1))
                 ]
-                start_response(self.status_206, self.start_response_args[1] + extra_headers, self.start_response_args[2])
-                wrapper = RangeFileWrapper(self.file_like, self.block_size, self.ranges)
-                self.clear()
+                start_response(self.status_206, priv.start_response_args[1] + extra_headers, priv.start_response_args[2])
+                wrapper = RangeFileWrapper(priv.file_like, priv.block_size, priv.ranges)
                 return wrapper
             else:
                 extra_headers = [
-                    (self.header_content_range,  'bytes */{}'.format(self.file_size)),
+                    (self.header_content_range,  'bytes */{}'.format(priv.file_size)),
                     (self.header_content_length, '0')
                 ]
-                start_response(self.status_416, self.start_response_args[1] + extra_headers, self.start_response_args[2])
-                self.clear()
+                start_response(self.status_416, priv.start_response_args[1] + extra_headers, priv.start_response_args[2])
                 return (b'',)
 
         else:
