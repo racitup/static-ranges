@@ -35,4 +35,5 @@ setup(
     zip_safe=False,
     install_requires=[
     ],
+    py_modules=['static_ranges'],
 )
