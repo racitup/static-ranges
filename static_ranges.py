@@ -39,7 +39,7 @@ class RangeFileWrapper(object):
 
     def __init__(self, file_like, block_size, ranges):
         self.file_like, self.block_size, self.ranges = file_like, block_size, ranges
-        if hasattr(file_like, 'close'):
+        if hasattr(self.file_like, 'close'):
             self.close = self.file_like.close
 
     def __iter__(self):
@@ -201,17 +201,18 @@ class Ranges(object):
                 rng = priv.ranges[0]
                 extra_headers = [
                     (self.header_content_range,  'bytes {}-{}/{}'.format(*rng, priv.file_size)),
-                    (self.header_content_length, '{}'.format(rng[1] - rng[0] + 1))
+                    (self.header_content_length, '{}'.format(rng[1] - rng[0] + 1)),
                 ]
                 start_response(self.status_206, priv.start_response_args[1] + extra_headers, priv.start_response_args[2])
-                wrapper = RangeFileWrapper(priv.file_like, priv.block_size, priv.ranges)
-                return wrapper
+                return RangeFileWrapper(priv.file_like, priv.block_size, priv.ranges)
             else:
                 extra_headers = [
                     (self.header_content_range,  'bytes */{}'.format(priv.file_size)),
-                    (self.header_content_length, '0')
+                    (self.header_content_length, '0'),
                 ]
                 start_response(self.status_416, priv.start_response_args[1] + extra_headers, priv.start_response_args[2])
+                if hasattr(priv.file_like, 'close'):
+                    priv.file_like.close()
                 return (b'',)
 
         else:
