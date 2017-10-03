@@ -200,7 +200,7 @@ class Ranges(object):
             elif len(priv.ranges) == 1:
                 rng = priv.ranges[0]
                 extra_headers = [
-                    (self.header_content_range,  'bytes {}-{}/{}'.format(*rng, priv.file_size)),
+                    (self.header_content_range,  'bytes {}-{}/{}'.format(rng[0], rng[1], priv.file_size)),
                     (self.header_content_length, '{}'.format(rng[1] - rng[0] + 1)),
                 ]
                 start_response(self.status_206, priv.start_response_args[1] + extra_headers, priv.start_response_args[2])
