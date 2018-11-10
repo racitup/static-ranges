@@ -64,8 +64,16 @@ class Ranges(object):
     """
     WSGI middleware that modifies static file responses with byte-range support
     Although multiple ranges are parsed, only single ranges are supported, i.e.
-    Content-Type: multipart/byteranges; boundary=... is not supported.
+    Response header Content-Type: multipart/byteranges; boundary=... is not supported.
     If multiple ranges condense down to a single range, that range will be sent.
+
+    Briefly:
+     Are only valid on GET requests.
+     Byte indexes start at zero and ranges are inclusive.
+     '500-999' means the 2nd 500 byte range of a file
+     '500-' means the remainder of the file after byte 499
+     '-500' means the last 500 bytes of a file
+    See RFC7233 for more information.
     """
     header_range = 'HTTP_RANGE'
     header_accept_ranges = 'Accept-Ranges'
@@ -83,7 +91,7 @@ class Ranges(object):
     def parse_byteranges(cls, environ):
         """
         Outputs a list of tuples with ranges or the empty list
-        According to the spec, start or end values can be omitted
+        According to the rfc, start or end values can be omitted
         """
         r = []
         s = environ.get(cls.header_range, '').replace(' ','').lower()
